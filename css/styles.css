@@ -1,0 +1,250 @@
+/* ── Variables (colores del logo GAVI) ── */
+:root {
+  --teal:      #00706B;
+  --teal-dark: #004F4B;
+  --orange:    #C4622D;
+  --bg:        #0F1F1E;
+  --surface:   #162524;
+  --surface2:  #1E3332;
+  --text:      #E8F0EF;
+  --text-muted:#8FA8A6;
+  --radius:    12px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--teal);
+  padding: 1rem 2rem;
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  height: 54px;
+  width: auto;
+}
+
+header h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--teal);
+  margin-top: 2px;
+}
+
+.header-date {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ── Main ── */
+main {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  width: 100%;
+}
+
+.section-title {
+  margin-bottom: 1.5rem;
+}
+
+.section-title h2 {
+  font-size: 1.2rem;
+  color: var(--teal);
+  border-left: 4px solid var(--orange);
+  padding-left: 0.75rem;
+}
+
+.section-title p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+  padding-left: 1rem;
+}
+
+/* ── Grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 112, 107, 0.2);
+}
+
+.card-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(0, 112, 107, 0.2);
+  color: var(--teal);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.card-title {
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+}
+
+.card-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Donut chart */
+.card-chart {
+  position: relative;
+  width: 80px;
+  margin: 0 auto;
+}
+
+.donut { transform: rotate(-90deg); }
+
+.donut-bg {
+  fill: none;
+  stroke: var(--surface2);
+  stroke-width: 3.5;
+}
+
+.donut-fill {
+  fill: none;
+  stroke: var(--teal);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.donut-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Card footer */
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.badge {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+
+.badge-green { background: rgba(0,112,107,0.2); color: #4DD9C0; }
+.badge-red   { background: rgba(196,98,45,0.2);  color: var(--orange); }
+
+.btn {
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--teal);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.btn:hover { background: var(--teal-dark); }
+
+/* Empty card */
+.card-empty {
+  border: 2px dashed var(--surface2);
+  background: transparent;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 180px;
+  gap: 0.5rem;
+}
+
+.card-empty:hover { border-color: var(--teal); color: var(--teal); }
+
+.card-empty-icon {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--surface2);
+}
+
+.card-empty:hover .card-empty-icon { color: var(--teal); }
+
+.card-empty code {
+  font-size: 0.75rem;
+  background: var(--surface2);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* ── Footer ── */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--surface2);
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}

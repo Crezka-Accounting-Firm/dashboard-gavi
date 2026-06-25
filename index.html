@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | Clínica Dermatológica</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="config.js"></script>
+<style>
+/* ── Variables ───────────────────────────────────────────── */
+:root {
+  --primario:   #7C3D8F;
+  --acento:     #F4A7C3;
+  --fondo:      #f8f5fb;
+  --tarjeta:    #ffffff;
+  --texto:      #1f2937;
+  --texto-sec:  #6b7280;
+  --borde:      #e9e0ef;
+  --ok:         #16a34a;
+  --warn:       #d97706;
+  --bad:        #dc2626;
+  --sombra:     0 2px 12px rgba(124,61,143,0.07);
+}
+[data-tema="oscuro"] {
+  --fondo:     #12091a;
+  --tarjeta:   #1e1029;
+  --texto:     #f3f4f6;
+  --texto-sec: #9ca3af;
+  --borde:     #2d1e3e;
+  --sombra:    0 2px 12px rgba(0,0,0,0.3);
+}
+
+/* ── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+  min-height: 100vh;
+  transition: background 0.25s, color 0.25s;
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+.wrap { max-width: 1300px; margin: 0 auto; padding: 16px 20px 40px; }
+
+/* ── Header ──────────────────────────────────────────────── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; padding: 20px 0 16px;
+  border-bottom: 1px solid var(--borde);
+}
+.header-izq { display: flex; align-items: center; gap: 14px; }
+.header-izq img#logoCliente { height: 42px; display: none; border-radius: 6px; }
+.header-izq img#logoCliente.visible { display: block; }
+.header-titulo h1 { font-size: 20px; font-weight: 700; line-height: 1.2; }
+.header-titulo p  { font-size: 12px; color: var(--texto-sec); margin-top: 2px; }
+.header-der { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ── Controls ────────────────────────────────────────────── */
+select, button {
+  font: inherit; padding: 8px 13px; border-radius: 8px;
+  border: 1px solid var(--borde); background: var(--tarjeta);
+  color: var(--texto); cursor: pointer; font-size: 13px;
+  transition: border-color 0.15s;
+}
+select:hover, button:hover { border-color: var(--primario); }
+button.btn-prim { background: var(--primario); color: #fff; border-color: transparent; font-weight: 600; }
+button.btn-prim:hover { opacity: 0.9; }
+
+.badge-fuente {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; padding: 5px 11px; border-radius: 999px;
+  background: var(--tarjeta); border: 1px solid var(--borde); white-space: nowrap;
+}
+.badge-fuente.ok       { border-color: #86efac; color: var(--ok); }
+.badge-fuente.fallback { border-color: #fcd34d; color: var(--warn); }
+.badge-fuente.error    { border-color: #fca5a5; color: var(--bad); }
+
+/* ── Tabs ────────────────────────────────────────────────── */
+.tabs {
+  display: flex; gap: 4px; margin-top: 20px;
+  border-bottom: 2px solid var(--borde);
+}
+.tab-btn {
+  padding: 10px 20px; font-size: 14px; font-weight: 600;
+  border: none; background: transparent; color: var(--texto-sec);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; transition: all 0.15s; border-radius: 6px 6px 0 0;
+}
+.tab-btn:hover { color: var(--primario); background: rgba(124,61,143,0.05); }
+.tab-btn.activo { color: var(--primario); border-bottom-color: var(--primario); background: rgba(124,61,143,0.07); }
+
+/* ── Panel de sección ────────────────────────────────────── */
+.seccion { display: none; }
+.seccion.activa { display: block; }
+
+/* ── KPI Grid ────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid; gap: 14px; margin: 18px 0;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.kpi-card {
+  background: var(--tarjeta); border: 1px solid var(--borde);
+  border-radius: 14px; padding: 18px 20px;
+  box-shadow: var(--sombra);
+  position: relative; overflow: hidden;
+}
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 4px; height: 100%; background: var(--primario);
+  border-radius: 14px 0 0 14px;
+}
+.kpi-card .kpi-icono { font-size: 22px; margin-bottom: 8px; }
+.kpi-card .kpi-lbl  { font-size: 12px; color: var(--texto-sec); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+.kpi-card .kpi-val  { font-size: 28px; font-weight: 700; line-height: 1.15; margin: 4px 0; }
+.kpi-card .kpi-sub  { font-size: 12px; color: var(--texto-sec); }
+.kpi-card .kpi-tend { font-size: 12px; margin-top: 5px; font-weight: 600; }
+.kpi-tend.up   { color: var(--ok); }
+.kpi-tend.down { color: var(--bad); }
+.kpi-tend.neutral { color: var(--texto-sec); }
+
+/* KPI especial de alerta */
+.kpi-card.alerta::before { background: var(--bad); }
+.kpi-card.warn::before   { background: var(--warn); }
+.kpi-card.ok::before     { background: var(--ok); }
+
+/* ── Charts ──────────────────────────────────────────────── */
+.charts-grid {
+  display: grid; gap: 14px; margin: 14px 0;
+  grid-template-columns: 2fr 1fr;
+}
+.charts-grid .span2 { grid-column: span 2; }
+@media (max-width: 840px) {
+  .charts-grid { grid-template-columns: 1fr; }
+  .charts-grid .span2 { grid-column: span 1; }
+}
+.chart-card {
+  background: var(--tarjeta); border: 1px solid var(--borde);
+  border-radius: 14px; padding: 16px 18px;
+  box-shadow: var(--sombra);
+}
+.chart-card h3 { font-size: 13px; font-weight: 600; color: var(--texto-sec); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+.chart-wrap { position: relative; height: 260px; }
+
+/* ── Tabla ───────────────────────────────────────────────── */
+.tabla-card {
+  background: var(--tarjeta); border: 1px solid var(--borde);
+  border-radius: 14px; padding: 18px 20px;
+  box-shadow: var(--sombra); margin: 14px 0;
+}
+.tabla-card h3 { font-size: 13px; font-weight: 600; color: var(--texto-sec); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+.filtros {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.filtros input, .filtros select {
+  flex: 1; min-width: 150px;
+}
+.filtros input { border-radius: 8px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left; padding: 9px 10px;
+  font-weight: 600; font-size: 12px; color: var(--texto-sec);
+  border-bottom: 2px solid var(--borde);
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+thead th:hover { color: var(--primario); }
+tbody td {
+  padding: 10px 10px; border-bottom: 1px solid var(--borde);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: rgba(124,61,143,0.03); }
+td.num, th.num { text-align: right; }
+td.monto { font-weight: 600; }
+
+.pill {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 999px; font-size: 11px; font-weight: 700;
+}
+.pill-ok      { background: rgba(22,163,74,.12);  color: var(--ok); }
+.pill-warn    { background: rgba(217,119,6,.12);  color: var(--warn); }
+.pill-bad     { background: rgba(220,38,38,.12);  color: var(--bad); }
+.pill-neu     { background: rgba(107,114,128,.1); color: var(--texto-sec); }
+
+.vacío {
+  text-align: center; padding: 48px; color: var(--texto-sec); font-size: 14px;
+}
+.vacío .vacío-ico { font-size: 36px; margin-bottom: 8px; }
+
+/* ── Paginación ──────────────────────────────────────────── */
+.paginacion {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--texto-sec);
+}
+.paginacion .paginas { display: flex; gap: 4px; }
+.paginacion button { padding: 5px 10px; min-width: 34px; }
+.paginacion button.activo { background: var(--primario); color: #fff; border-color: transparent; }
+
+/* ── Footer ──────────────────────────────────────────────── */
+footer {
+  text-align: center; font-size: 12px; color: var(--texto-sec);
+  margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--borde);
+}
+
+/* ── Spinner ─────────────────────────────────────────────── */
+.spinner-overlay {
+  position: fixed; inset: 0; background: rgba(248,245,251,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999; backdrop-filter: blur(2px);
+}
+[data-tema="oscuro"] .spinner-overlay { background: rgba(18,9,26,0.7); }
+.spinner {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 4px solid var(--borde); border-top-color: var(--primario);
+  animation: girar 0.7s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
+/* ── Mobile ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .tab-btn { padding: 8px 12px; font-size: 13px; }
+  table thead { display: none; }
+  table, tbody, tr, td { display: block; width: 100%; }
+  tr { border: 1px solid var(--borde); border-radius: 10px; margin-bottom: 8px; padding: 10px; }
+  td { display: flex; justify-content: space-between; border: none; padding: 4px 0; }
+  td::before { content: attr(data-lbl); font-weight: 600; color: var(--texto-sec); margin-right: 8px; }
+  td.num { text-align: left; }
+}
+</style>
+</head>
+<body>
+
+<!-- Spinner de carga -->
+<div class="spinner-overlay" id="spinner"><div class="spinner"></div></div>
+
+<div class="wrap">
+
+  <!-- ── Header ────────────────────────────────────────── -->
+  <header>
+    <div class="header-izq">
+      <img id="logoCliente" src="" alt="Logo clínica">
+      <div class="header-titulo">
+        <h1 id="tituloCliente">Clínica Dermatológica</h1>
+        <p>Panel de control · <span id="fechaHoy"></span></p>
+      </div>
+    </div>
+    <div class="header-der">
+      <span class="badge-fuente" id="badgeFuente">● Cargando…</span>
+      <select id="selectorPeriodo">
+        <option value="todo">Todo el período</option>
+        <option value="mes" selected>Este mes</option>
+        <option value="trimestre">Último trimestre</option>
+        <option value="anio">Este año</option>
+      </select>
+      <button id="btnTema">🌙</button>
+      <button class="btn-prim" id="btnExportar">⬇ Exportar</button>
+    </div>
+  </header>
+
+  <!-- ── Tabs ──────────────────────────────────────────── -->
+  <div class="tabs">
+    <button class="tab-btn activo" data-tab="ventas">💰 Ventas</button>
+    <button class="tab-btn"        data-tab="compras">🛒 Compras</button>
+    <button class="tab-btn"        data-tab="citas">📅 Citas</button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       SECCIÓN: VENTAS
+       ════════════════════════════════════════════════════ -->
+  <div class="seccion activa" id="sec-ventas">
+
+    <div class="kpi-grid" id="kpi-ventas"></div>
+
+    <div class="charts-grid">
+      <div class="chart-card span2">
+        <h3>Ingresos mensuales</h3>
+        <div class="chart-wrap"><canvas id="g-ventas-tendencia"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Por servicio</h3>
+        <div class="chart-wrap"><canvas id="g-ventas-servicios"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Estado de cobro</h3>
+        <div class="chart-wrap"><canvas id="g-ventas-estado"></canvas></div>
+      </div>
+    </div>
+
+    <div class="tabla-card">
+      <h3>Detalle de ventas</h3>
+      <div class="filtros">
+        <input type="text" id="bus-ventas" placeholder="🔍 Buscar paciente, servicio…">
+        <select id="flt-ventas-estado">
+          <option value="">Todos los estados</option>
+          <option value="Pagado">Pagado</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Vencido">Vencido</option>
+        </select>
+      </div>
+      <div id="tbl-ventas"></div>
+      <div class="paginacion" id="pag-ventas"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       SECCIÓN: COMPRAS
+       ════════════════════════════════════════════════════ -->
+  <div class="seccion" id="sec-compras">
+
+    <div class="kpi-grid" id="kpi-compras"></div>
+
+    <div class="charts-grid">
+      <div class="chart-card span2">
+        <h3>Gastos mensuales</h3>
+        <div class="chart-wrap"><canvas id="g-compras-tendencia"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Por proveedor (Top 6)</h3>
+        <div class="chart-wrap"><canvas id="g-compras-proveedores"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Estado de pago</h3>
+        <div class="chart-wrap"><canvas id="g-compras-estado"></canvas></div>
+      </div>
+    </div>
+
+    <div class="tabla-card">
+      <h3>Detalle de compras</h3>
+      <div class="filtros">
+        <input type="text" id="bus-compras" placeholder="🔍 Buscar proveedor, descripción…">
+        <select id="flt-compras-estado">
+          <option value="">Todos los estados</option>
+          <option value="Pagado">Pagado</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Vencido">Vencido</option>
+        </select>
+      </div>
+      <div id="tbl-compras"></div>
+      <div class="paginacion" id="pag-compras"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       SECCIÓN: CITAS
+       ════════════════════════════════════════════════════ -->
+  <div class="seccion" id="sec-citas">
+
+    <div class="kpi-grid" id="kpi-citas"></div>
+
+    <div class="charts-grid">
+      <div class="chart-card span2">
+        <h3>Citas por mes</h3>
+        <div class="chart-wrap"><canvas id="g-citas-mes"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Por tipo de servicio</h3>
+        <div class="chart-wrap"><canvas id="g-citas-servicio"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Estado de citas</h3>
+        <div class="chart-wrap"><canvas id="g-citas-estado"></canvas></div>
+      </div>
+    </div>
+
+    <div class="tabla-card">
+      <h3>Detalle de citas</h3>
+      <div class="filtros">
+        <input type="text" id="bus-citas" placeholder="🔍 Buscar paciente, doctor…">
+        <select id="flt-citas-estado">
+          <option value="">Todos los estados</option>
+          <option value="Confirmada">Confirmada</option>
+          <option value="Completada">Completada</option>
+          <option value="Cancelada">Cancelada</option>
+          <option value="No asistió">No asistió</option>
+        </select>
+      </div>
+      <div id="tbl-citas"></div>
+      <div class="paginacion" id="pag-citas"></div>
+    </div>
+  </div>
+
+  <footer>
+    Última actualización: <span id="ultimaAct">–</span> ·
+    Dashboard generado por <strong>JADD Estratega Financiero & Fiscal</strong>
+  </footer>
+
+</div><!-- /.wrap -->
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════ -->
+<script>
+/* ── Paleta ────────────────────────────────────────────────── */
+const PALETA = ['#7C3D8F','#F4A7C3','#0d9488','#f59e0b','#3b82f6','#6366f1','#10b981','#ef4444'];
+
+/* ── Estado global ─────────────────────────────────────────── */
+const CFG  = window.DASHBOARD_CONFIG || {};
+let DATA   = { ventas: [], compras: [], citas: [] };
+let PAGINA = { ventas: 1, compras: 1, citas: 1 };
+const POR_PAG = 15;
+let GRAFICAS  = {};
+
+/* ── Utilidades ────────────────────────────────────────────── */
+const fmt$  = v => isNaN(Number(v)) ? '$0.00' : '$' + Number(v).toLocaleString('es-SV', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtN  = v => Number(v || 0).toLocaleString('es-SV');
+const fmtF  = v => { const d = new Date(v); return isNaN(d) ? (v||'') : d.toLocaleDateString('es-SV'); };
+
+function pilClass(e) {
+  const m = { 'pagado':'ok','completada':'ok','confirmada':'ok','pendiente':'warn','no asistió':'bad','cancelada':'bad','vencido':'bad' };
+  return 'pill pill-' + (m[(e||'').toLowerCase()] || 'neu');
+}
+
+function cumplePeriodo(fechaStr, periodo) {
+  if (periodo === 'todo') return true;
+  const f = new Date(fechaStr);
+  if (isNaN(f)) return true;
+  const h = new Date();
+  if (periodo === 'mes')      return f.getFullYear() === h.getFullYear() && f.getMonth() === h.getMonth();
+  if (periodo === 'trimestre'){ const l = new Date(h.getFullYear(), h.getMonth()-3, h.getDate()); return f >= l; }
+  if (periodo === 'anio')     return f.getFullYear() === h.getFullYear();
+  return true;
+}
+
+function colPeriodo(lista, periodoFn) {
+  const sel = document.getElementById('selectorPeriodo').value;
+  return lista.filter(r => periodoFn(r, sel));
+}
+
+function porMes(lista, campoFecha, campoVal, esConteo = false) {
+  const acc = {};
+  lista.forEach(r => {
+    const d = new Date(r[campoFecha]);
+    const k = isNaN(d) ? 'N/D' : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    acc[k] = (acc[k]||0) + (esConteo ? 1 : (Number(r[campoVal])||0));
+  });
+  const keys = Object.keys(acc).sort();
+  return { labels: keys, data: keys.map(k => acc[k]) };
+}
+
+function crearGrafica(id, tipo, data, opts = {}) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (GRAFICAS[id]) GRAFICAS[id].destroy();
+  GRAFICAS[id] = new Chart(ctx, {
+    type: tipo, data: data,
+    options: Object.assign({
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--texto'), font: { size: 12 } } } }
+    }, opts)
+  });
+}
+
+function catServicio(nombre) {
+  const cats = CFG.categoriasServicios || {};
+  for (const [c, rx] of Object.entries(cats)) if (rx.test(nombre||'')) return c;
+  return 'Otros';
+}
+
+/* ── Fallback data (representativo de una clínica real) ─────── */
+function generarFallbackVentas() {
+  const servicios = ['Consulta dermatológica','Peeling facial','Limpieza facial profunda','Láser depilación','Botox zona 1','Relleno labios','Consulta primera vez','Dermapen','Cirugía menor','Consulta seguimiento'];
+  const estados   = ['Pagado','Pagado','Pagado','Pendiente','Vencido'];
+  const nombres   = ['Ana García','Carlos Rivas','María López','José Hernández','Laura Martínez','Roberto Pérez','Sofía Torres','Diego Alvarado','Carmen Silva','Pedro Ramírez'];
+  const rows = [];
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(2025, Math.floor(Math.random()*7), Math.floor(Math.random()*28)+1);
+    rows.push({
+      Fecha: d.toISOString(), Cliente: nombres[i%nombres.length],
+      Servicio: servicios[i%servicios.length],
+      Monto: (Math.floor(Math.random()*180)+20).toFixed(2),
+      Estado: estados[Math.floor(Math.random()*estados.length)],
+      FACTURA: i%3===0?'si':'no'
+    });
+  }
+  return rows;
+}
+function generarFallbackCompras() {
+  const descs = ['Crema hidratante Cetaphil x12','Guantes quirúrgicos caja','Agujas botox caja 100u','Suero fisiológico 500ml','Jabón antiséptico galón','Algodón médico rollo','Acido hialurónico 2ml x5','Mascarillas N95 caja','Material de limpieza','Papel camilla rollo'];
+  const provs = ['Distribuidora Médica SV','Farmacia Central','LabDerm ElSalvador','Suministros Hospitalarios','MedSupply S.A. de C.V.'];
+  const estados = ['Pagado','Pagado','Pendiente'];
+  const rows = [];
+  for (let i = 0; i < 40; i++) {
+    const d = new Date(2025, Math.floor(Math.random()*7), Math.floor(Math.random()*28)+1);
+    rows.push({
+      Fecha: d.toISOString(), Proveedor: provs[i%provs.length],
+      Descripcion: descs[i%descs.length],
+      Monto: (Math.floor(Math.random()*300)+15).toFixed(2),
+      Estado: estados[Math.floor(Math.random()*estados.length)],
+      ESTATUS: i%3===0?'Pagado':'Pendiente'
+    });
+  }
+  return rows;
+}
+function generarFallbackCitas() {
+  const servicios = ['Consulta dermatológica','Peeling facial','Láser','Botox','Limpieza facial','Consulta primera vez','Seguimiento'];
+  const estados   = ['Completada','Completada','Completada','Confirmada','Cancelada','No asistió'];
+  const doctores  = ['Dra. Morales','Dr. Vásquez','Dra. Rivas'];
+  const pacientes = ['Ana García','Carlos Rivas','María López','José Hernández','Laura Martínez','Roberto Pérez','Sofía Torres','Diego Alvarado','Carmen Silva','Pedro Ramírez'];
+  const horas     = ['08:00','09:00','10:00','11:00','14:00','15:00','16:00'];
+  const rows = [];
+  for (let i = 0; i < 80; i++) {
+    const d = new Date(2025, Math.floor(Math.random()*7), Math.floor(Math.random()*28)+1);
+    rows.push({
+      Fecha: d.toISOString(), Paciente: pacientes[i%pacientes.length],
+      Doctor: doctores[i%doctores.length], Servicio: servicios[i%servicios.length],
+      Estado: estados[Math.floor(Math.random()*estados.length)],
+      Hora: horas[i%horas.length]
+    });
+  }
+  return rows;
+}
+
+/* ── Carga de datos ─────────────────────────────────────────── */
+/* ── Fetch de una hoja via ?hoja= (patrón multi-hoja Todo Marketing) ── */
+async function fetchHoja(baseUrl, claveHoja, fallback) {
+  const url = baseUrl + '?hoja=' + claveHoja;
+  try {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const json = await r.json();
+    // El proxy devuelve array de filas o {error:...}
+    if (!Array.isArray(json)) {
+      console.warn('Proxy devolvió error para hoja "' + claveHoja + '":', json);
+      throw new Error(json.error || 'Respuesta inesperada');
+    }
+    return { data: json, esFallback: false };
+  } catch(e) {
+    console.warn('Usando fallback para hoja "' + claveHoja + '":', e.message);
+    return { data: fallback(), esFallback: true };
+  }
+}
+
+async function cargarTodos() {
+  const base = CFG.sheetsEndpointBase || '';
+  const sinConectar = !base || base.startsWith('PENDIENTE');
+
+  let rv, rc, rci;
+
+  if (sinConectar) {
+    // Sin endpoint configurado: usar datos de ejemplo directamente
+    rv  = { data: generarFallbackVentas(),  esFallback: true };
+    rc  = { data: generarFallbackCompras(), esFallback: true };
+    rci = { data: generarFallbackCitas(),   esFallback: true };
+  } else {
+    // Un solo Apps Script, 3 peticiones con ?hoja=
+    [rv, rc, rci] = await Promise.all([
+      fetchHoja(base, 'ventas',  generarFallbackVentas),
+      fetchHoja(base, 'compras', generarFallbackCompras),
+      fetchHoja(base, 'citas',   generarFallbackCitas)
+    ]);
+  }
+
+  DATA.ventas  = rv.data;
+  DATA.compras = rc.data;
+  DATA.citas   = rci.data;
+
+  const esFallback = rv.esFallback || rc.esFallback || rci.esFallback;
+  const badge = document.getElementById('badgeFuente');
+  if (sinConectar) {
+    badge.textContent = '⚠ Datos de ejemplo';
+    badge.className   = 'badge-fuente fallback';
+  } else if (esFallback) {
+    badge.textContent = '⚠ Error de conexión — datos de ejemplo';
+    badge.className   = 'badge-fuente fallback';
+  } else {
+    badge.textContent = '✓ Conectado a Google Sheets';
+    badge.className   = 'badge-fuente ok';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VENTAS
+   ══════════════════════════════════════════════════════════════ */
+function filtrarVentas() {
+  const txt = (document.getElementById('bus-ventas').value||'').toLowerCase();
+  const est = document.getElementById('flt-ventas-estado').value;
+  const per = document.getElementById('selectorPeriodo').value;
+  return DATA.ventas.filter(r =>
+    cumplePeriodo(r.FECHA||r.Fecha, per) &&
+    (!txt || [r.NOMBRE,r.PROCEDIMIENTO,r.FACTURA].some(v => (v||'').toString().toLowerCase().includes(txt)))
+  );
+}
+
+function renderVentas() {
+  const datos = filtrarVentas();
+  const cols  = CFG.columnasVentas || {};
+  const fCli  = cols.cliente       || 'NOMBRE';
+  const fServ = cols.servicio      || 'PROCEDIMIENTO';
+  const fMon  = cols.monto         || 'MONTO';
+  const fFec  = cols.fecha         || 'FECHA';
+  const fHora = cols.hora          || 'HORA';
+  const fFact = cols.factura       || 'FACTURA';
+  const fPos  = cols.posDad        || 'POS (DAD)';
+  const fEfec = cols.efectivo      || 'EFECTIVO';
+  const fCash = cols.cash          || 'CASH';
+  const fTran = cols.transferencia || 'TRANF';
+
+  // KPIs — cobrado = suma real de métodos de pago
+  const sumaCol    = (d, col) => d.reduce((s,r) => s + (Number(r[col])||0), 0);
+  const total      = sumaCol(datos, fMon);
+  const cobPos     = sumaCol(datos, fPos);
+  const cobEfec    = sumaCol(datos, fEfec);
+  const cobCash    = sumaCol(datos, fCash);
+  const cobTran    = sumaCol(datos, fTran);
+  const totalCob   = cobPos + cobEfec + cobCash + cobTran;
+  const pendiente  = Math.max(0, total - totalCob);
+  const conMonto   = datos.filter(r => Number(r[fMon]) > 0);
+  const ticket     = conMonto.length ? total / conMonto.length : 0;
+  const conFactura = datos.filter(r => (r[fFact]||'').toLowerCase() === 'si').length;
+
+  document.getElementById('kpi-ventas').innerHTML = `
+    <div class="kpi-card ok">
+      <div class="kpi-icono">💰</div>
+      <div class="kpi-lbl">Total ingresos</div>
+      <div class="kpi-val">${fmt$(total)}</div>
+      <div class="kpi-sub">${conMonto.length} pacientes con cobro</div>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-icono">✅</div>
+      <div class="kpi-lbl">Total cobrado</div>
+      <div class="kpi-val">${fmt$(totalCob)}</div>
+      <div class="kpi-sub">POS: ${fmt$(cobPos)} · Efec: ${fmt$(cobEfec+cobCash)} · Transf: ${fmt$(cobTran)}</div>
+    </div>
+    <div class="kpi-card ${pendiente>0?'warn':'ok'}">
+      <div class="kpi-icono">⏳</div>
+      <div class="kpi-lbl">Diferencia / Pendiente</div>
+      <div class="kpi-val">${fmt$(pendiente)}</div>
+      <div class="kpi-sub">${total>0?((pendiente/total)*100).toFixed(1):'0'}% del total</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icono">🧾</div>
+      <div class="kpi-lbl">Ticket promedio</div>
+      <div class="kpi-val">${fmt$(ticket)}</div>
+      <div class="kpi-sub">Por paciente atendido</div>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-icono">📋</div>
+      <div class="kpi-lbl">Con factura</div>
+      <div class="kpi-val">${conFactura}</div>
+      <div class="kpi-sub">de ${datos.length} registros totales</div>
+    </div>`;
+
+  // Gráfica tendencia
+  const tm = porMes(datos, fFec, fMon);
+  crearGrafica('g-ventas-tendencia', 'line', {
+    labels: tm.labels,
+    datasets: [{ label: 'Ingresos ($)', data: tm.data, borderColor: '#7C3D8F', backgroundColor: 'rgba(124,61,143,0.08)', tension: 0.3, fill: true, pointRadius: 4 }]
+  });
+
+  // Gráfica por tipo de servicio (dona)
+  const porServ = {};
+  datos.forEach(r => { const c = catServicio(r[fServ]); porServ[c] = (porServ[c]||0) + (Number(r[fMon])||0); });
+  crearGrafica('g-ventas-servicios', 'doughnut', {
+    labels: Object.keys(porServ),
+    datasets: [{ data: Object.values(porServ), backgroundColor: PALETA }]
+  }, { plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--texto') } } } });
+
+  // Gráfica métodos de pago
+  const metodos = { 'POS (DAD)': cobPos, 'Efectivo': cobEfec, 'Cash': cobCash, 'Transferencia': cobTran };
+  const metFilt  = Object.entries(metodos).filter(([,v]) => v > 0);
+  crearGrafica('g-ventas-estado', 'doughnut', {
+    labels: metFilt.map(x=>x[0]),
+    datasets: [{ data: metFilt.map(x=>x[1]), backgroundColor: ['#7C3D8F','#16a34a','#0d9488','#f59e0b'] }]
+  }, { plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--texto') } } } });
+
+  renderTablaVentas(datos);
+}
+
+function renderTablaVentas(datos) {
+  const pg  = PAGINA.ventas;
+  const ini = (pg-1)*POR_PAG, fin = ini+POR_PAG;
+  const pag = datos.slice(ini, fin);
+  const cols = CFG.columnasVentas || {};
+  const cont = document.getElementById('tbl-ventas');
+  if (!datos.length) { cont.innerHTML = '<div class="vacío"><div class="vacío-ico">📄</div>No se encontraron registros.</div>'; renderPaginacion('ventas',0,datos.length); return; }
+  let h = '<table><thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Procedimiento</th><th class="num">Monto</th><th>Factura</th></tr></thead><tbody>';
+  pag.forEach(r => {
+    const factura = (r[cols.factura||'FACTURA']||'').toLowerCase();
+    const factClass = factura==='si' ? 'pill-ok' : factura==='no' ? 'pill-neu' : 'pill-warn';
+    h += `<tr>
+      <td data-lbl="Fecha">${fmtF(r[cols.fecha||'FECHA'])}</td>
+      <td data-lbl="Hora">${r[cols.hora||'HORA']||''}</td>
+      <td data-lbl="Paciente">${r[cols.cliente||'NOMBRE']||''}</td>
+      <td data-lbl="Procedimiento">${r[cols.servicio||'PROCEDIMIENTO']||''}</td>
+      <td data-lbl="Monto" class="num monto">${fmt$(r[cols.monto||'MONTO'])}</td>
+      <td data-lbl="Factura"><span class="pill ${factClass}">${r[cols.factura||'FACTURA']||'—'}</span></td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  cont.innerHTML = h;
+  renderPaginacion('ventas', pg, datos.length);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COMPRAS
+   ══════════════════════════════════════════════════════════════ */
+function filtrarCompras() {
+  const txt = (document.getElementById('bus-compras').value||'').toLowerCase();
+  const est = document.getElementById('flt-compras-estado').value;
+  const per = document.getElementById('selectorPeriodo').value;
+  return DATA.compras.filter(r =>
+    cumplePeriodo(r.FECHA||r.Fecha, per) &&
+    (!est || (r.ESTATUS||'') === est) &&
+    (!txt || [r.PROVEEDOR,r.DOC,r.CONTACTO].some(v => (v||'').toString().toLowerCase().includes(txt)))
+  );
+}
+
+function renderCompras() {
+  const datos = filtrarCompras();
+  const total   = datos.reduce((s,r)=>s+(Number(r.MONTO||r.Monto)||0),0);
+  const pagado  = datos.filter(r=>(r.ESTATUS||r.Estado||'').toLowerCase()==='pagado').reduce((s,r)=>s+(Number(r.MONTO||r.Monto)||0),0);
+  const pend    = total - pagado;
+  const prov    = [...new Set(datos.map(r=>r.PROVEEDOR||r.Proveedor||''))].length;
+
+  document.getElementById('kpi-compras').innerHTML = `
+    <div class="kpi-card alerta">
+      <div class="kpi-icono">🛒</div>
+      <div class="kpi-lbl">Total compras</div>
+      <div class="kpi-val">${fmt$(total)}</div>
+      <div class="kpi-sub">${datos.length} órdenes de compra</div>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-icono">✅</div>
+      <div class="kpi-lbl">Pagado a proveedores</div>
+      <div class="kpi-val">${fmt$(pagado)}</div>
+      <div class="kpi-sub">${total>0?((pagado/total)*100).toFixed(1):'0'}% del total</div>
+    </div>
+    <div class="kpi-card ${pend>0?'warn':'ok'}">
+      <div class="kpi-icono">⏳</div>
+      <div class="kpi-lbl">Por pagar</div>
+      <div class="kpi-val">${fmt$(pend)}</div>
+      <div class="kpi-sub">Cuentas por pagar</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icono">🏢</div>
+      <div class="kpi-lbl">Proveedores activos</div>
+      <div class="kpi-val">${prov}</div>
+      <div class="kpi-sub">En período seleccionado</div>
+    </div>`;
+
+  const tm = porMes(datos,'FECHA','MONTO');
+  crearGrafica('g-compras-tendencia','line',{
+    labels: tm.labels,
+    datasets:[{label:'Gastos ($)',data:tm.data,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.08)',tension:0.3,fill:true,pointRadius:4}]
+  });
+
+  const porProv = {};
+  datos.forEach(r=>{const p=r.PROVEEDOR||r.Proveedor||'N/D'; porProv[p]=(porProv[p]||0)+(Number(r.MONTO||r.Monto)||0);});
+  const topProv = Object.entries(porProv).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  crearGrafica('g-compras-proveedores','bar',{
+    labels:topProv.map(x=>x[0]),
+    datasets:[{label:'Monto ($)',data:topProv.map(x=>x[1]),backgroundColor:PALETA}]
+  },{indexAxis:'y'});
+
+  const porEst={};
+  datos.forEach(r=>{const e=r.ESTATUS||r.Estado||'Sin estado'; porEst[e]=(porEst[e]||0)+1;});
+  crearGrafica('g-compras-estado','doughnut',{
+    labels:Object.keys(porEst),
+    datasets:[{data:Object.values(porEst),backgroundColor:['#16a34a','#d97706','#dc2626','#9ca3af']}]
+  },{plugins:{legend:{position:'bottom',labels:{color:getComputedStyle(document.documentElement).getPropertyValue('--texto')}}}});
+
+  renderTablaCompras(datos);
+}
+
+function renderTablaCompras(datos) {
+  const pg=PAGINA.compras, ini=(pg-1)*POR_PAG, fin=ini+POR_PAG;
+  const pag=datos.slice(ini,fin);
+  const cont=document.getElementById('tbl-compras');
+  if(!datos.length){cont.innerHTML='<div class="vacío"><div class="vacío-ico">📄</div>No se encontraron registros.</div>';renderPaginacion('compras',0,datos.length);return;}
+  let h='<table><thead><tr><th>Fecha</th><th>Proveedor</th><th>Documento</th><th class="num">Monto</th><th>Estatus</th><th>Contacto</th></tr></thead><tbody>';
+  pag.forEach(r=>{
+    h+=`<tr>
+      <td data-lbl="Fecha">${fmtF(r.FECHA||r.Fecha)}</td>
+      <td data-lbl="Proveedor">${r.PROVEEDOR||r.Proveedor||''}</td>
+      <td data-lbl="Documento">${r.DOC||r.Doc||''}</td>
+      <td data-lbl="Monto" class="num monto">${fmt$(r.MONTO||r.Monto)}</td>
+      <td data-lbl="Estatus"><span class="${pilClass(r.ESTATUS||r.Estado)}">${r.ESTATUS||r.Estado||''}</span></td>
+      <td data-lbl="Contacto">${r.CONTACTO||r.Contacto||''}</td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  cont.innerHTML=h;
+  renderPaginacion('compras',pg,datos.length);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CITAS
+   ══════════════════════════════════════════════════════════════ */
+function filtrarCitas() {
+  const txt=(document.getElementById('bus-citas').value||'').toLowerCase();
+  const est=document.getElementById('flt-citas-estado').value;
+  const per=document.getElementById('selectorPeriodo').value;
+  return DATA.citas.filter(r=>
+    cumplePeriodo(r.FECHA||r.Fecha,per) &&
+    (!txt||[r.CLIENTE,r['Cita de control'],r.HORA].some(v=>(v||'').toString().toLowerCase().includes(txt)))
+  );
+}
+
+function renderCitas() {
+  const datos=filtrarCitas();
+  const total=datos.length;
+  // En la hoja CITAS no hay columna de estado — se usa la columna 'Cita de control' como servicio
+  // Calculamos distribución por tipo de servicio y totales
+  const conHora  = datos.filter(r=>r.HORA||r.Hora).length;
+  const conTiempo= datos.filter(r=>r.TIEMPO||r.Tiempo).length;
+  const servicios= [...new Set(datos.map(r=>r['Cita de control']||''))].filter(Boolean).length;
+  const complet=total; const confirm=0; const cancel=0;
+  const tasaAsis='100';
+
+  document.getElementById('kpi-citas').innerHTML=`
+    <div class="kpi-card ok">
+      <div class="kpi-icono">📅</div>
+      <div class="kpi-lbl">Total citas</div>
+      <div class="kpi-val">${fmtN(total)}</div>
+      <div class="kpi-sub">En período seleccionado</div>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-icono">🕐</div>
+      <div class="kpi-lbl">Con horario asignado</div>
+      <div class="kpi-val">${conHora}</div>
+      <div class="kpi-sub">de ${total} citas registradas</div>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-icono">⏱</div>
+      <div class="kpi-lbl">Con tiempo estimado</div>
+      <div class="kpi-val">${conTiempo}</div>
+      <div class="kpi-sub">Duración planificada</div>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-icono">💆</div>
+      <div class="kpi-lbl">Tipos de servicio</div>
+      <div class="kpi-val">${servicios}</div>
+      <div class="kpi-sub">Procedimientos distintos</div>
+    </div>`;
+
+  const tm=porMes(datos,'FECHA','',true);
+  crearGrafica('g-citas-mes','bar',{
+    labels:tm.labels,
+    datasets:[{label:'Citas',data:tm.data,backgroundColor:'rgba(124,61,143,0.7)',borderRadius:6}]
+  });
+
+  const porServ={};
+  datos.forEach(r=>{const s=catServicio(r['Cita de control']||r.Servicio||'Otros'); porServ[s]=(porServ[s]||0)+1;});
+  crearGrafica('g-citas-servicio','doughnut',{
+    labels:Object.keys(porServ),
+    datasets:[{data:Object.values(porServ),backgroundColor:PALETA}]
+  },{plugins:{legend:{position:'bottom',labels:{color:getComputedStyle(document.documentElement).getPropertyValue('--texto')}}}});
+
+  const porEst={};
+  // No hay columna Estado en CITAS — mostrar top pacientes (nombre)
+  const porPac={};
+  datos.forEach(r=>{const p=(r.CLIENTE||'').split(' ').slice(0,2).join(' '); porPac[p]=(porPac[p]||0)+1;});
+  const topPac=Object.entries(porPac).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const porEst=Object.fromEntries(topPac);
+  crearGrafica('g-citas-estado','doughnut',{
+    labels:Object.keys(porEst),
+    datasets:[{data:Object.values(porEst),backgroundColor:['#16a34a','#7C3D8F','#d97706','#dc2626','#9ca3af']}]
+  },{plugins:{legend:{position:'bottom',labels:{color:getComputedStyle(document.documentElement).getPropertyValue('--texto')}}}});
+
+  renderTablaCitas(datos);
+}
+
+function renderTablaCitas(datos) {
+  const pg=PAGINA.citas, ini=(pg-1)*POR_PAG, fin=ini+POR_PAG;
+  const pag=datos.slice(ini,fin);
+  const cont=document.getElementById('tbl-citas');
+  if(!datos.length){cont.innerHTML='<div class="vacío"><div class="vacío-ico">📅</div>No se encontraron citas.</div>';renderPaginacion('citas',0,datos.length);return;}
+  let h='<table><thead><tr><th>Fecha</th><th>Hora</th><th>Tiempo</th><th>Paciente</th><th>Procedimiento</th><th>Contacto</th></tr></thead><tbody>';
+  pag.forEach(r=>{
+    h+=`<tr>
+      <td data-lbl="Fecha">${fmtF(r.FECHA||r.Fecha)}</td>
+      <td data-lbl="Hora">${r.HORA||r.Hora||''}</td>
+      <td data-lbl="Tiempo">${r.TIEMPO||r.Tiempo||''}</td>
+      <td data-lbl="Paciente">${r.CLIENTE||r.Cliente||''}</td>
+      <td data-lbl="Procedimiento">${r['Cita de control']||r.Servicio||''}</td>
+      <td data-lbl="Contacto">${r.CONTACTO||r.Contacto||''}</td>
+    </tr>`;
+  });
+  h+='</tbody></table>';
+  cont.innerHTML=h;
+  renderPaginacion('citas',pg,datos.length);
+}
+
+/* ── Paginación ──────────────────────────────────────────────── */
+function renderPaginacion(seccion, pagActual, total) {
+  const totalPags = Math.ceil(total/POR_PAG) || 1;
+  const cont = document.getElementById('pag-'+seccion);
+  if (totalPags <= 1) { cont.innerHTML=''; return; }
+  let h = `<span>${(pagActual-1)*POR_PAG+1}–${Math.min(pagActual*POR_PAG,total)} de ${total}</span><div class="paginas">`;
+  for (let i=1; i<=totalPags; i++) {
+    h += `<button class="${i===pagActual?'btn-prim activo':''}" onclick="irPagina('${seccion}',${i})">${i}</button>`;
+  }
+  h += '</div>';
+  cont.innerHTML = h;
+}
+
+function irPagina(seccion, n) {
+  PAGINA[seccion] = n;
+  if (seccion==='ventas')  renderTablaVentas(filtrarVentas());
+  if (seccion==='compras') renderTablaCompras(filtrarCompras());
+  if (seccion==='citas')   renderTablaCitas(filtrarCitas());
+}
+
+/* ── Render global ───────────────────────────────────────────── */
+function refrescar() {
+  PAGINA = { ventas:1, compras:1, citas:1 };
+  const tabActivo = document.querySelector('.tab-btn.activo')?.dataset.tab || 'ventas';
+  if (tabActivo==='ventas')  renderVentas();
+  if (tabActivo==='compras') renderCompras();
+  if (tabActivo==='citas')   renderCitas();
+}
+
+/* ── Exportar CSV ────────────────────────────────────────────── */
+function exportarCSV() {
+  const tab = document.querySelector('.tab-btn.activo')?.dataset.tab || 'ventas';
+  let datos=[];
+  if (tab==='ventas')  datos=filtrarVentas();
+  if (tab==='compras') datos=filtrarCompras();
+  if (tab==='citas')   datos=filtrarCitas();
+  if (!datos.length) return;
+  const ks=Object.keys(datos[0]);
+  const csv=[ks.join(','),...datos.map(r=>ks.map(k=>`"${(r[k]??'').toString().replace(/"/g,'""')}"`).join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`${tab}-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+/* ── Inicializar ─────────────────────────────────────────────── */
+(async function init() {
+  // Aplicar branding de config.js
+  if (CFG.colores) {
+    document.documentElement.style.setProperty('--primario', CFG.colores.primario || '#7C3D8F');
+    document.documentElement.style.setProperty('--acento',   CFG.colores.acento   || '#F4A7C3');
+  }
+  if (CFG.nombreCliente) {
+    document.getElementById('tituloCliente').textContent = CFG.nombreCliente;
+    document.title = 'Dashboard | ' + CFG.nombreCliente;
+  }
+  if (CFG.logoUrl) {
+    const logo = document.getElementById('logoCliente');
+    logo.src = CFG.logoUrl; logo.classList.add('visible');
+  }
+  document.getElementById('fechaHoy').textContent = new Date().toLocaleDateString('es-SV',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('activo'));
+      document.querySelectorAll('.seccion').forEach(s=>s.classList.remove('activa'));
+      btn.classList.add('activo');
+      document.getElementById('sec-'+btn.dataset.tab).classList.add('activa');
+      PAGINA={ventas:1,compras:1,citas:1};
+      if (btn.dataset.tab==='ventas')  renderVentas();
+      if (btn.dataset.tab==='compras') renderCompras();
+      if (btn.dataset.tab==='citas')   renderCitas();
+    });
+  });
+
+  // Filtros
+  ['bus-ventas','flt-ventas-estado'].forEach(id => document.getElementById(id)?.addEventListener('input',()=>{PAGINA.ventas=1;renderVentas();}));
+  ['bus-compras','flt-compras-estado'].forEach(id => document.getElementById(id)?.addEventListener('input',()=>{PAGINA.compras=1;renderCompras();}));
+  ['bus-citas','flt-citas-estado'].forEach(id => document.getElementById(id)?.addEventListener('input',()=>{PAGINA.citas=1;renderCitas();}));
+  document.getElementById('selectorPeriodo').addEventListener('change', refrescar);
+
+  // Tema
+  document.getElementById('btnTema').addEventListener('click', () => {
+    const oscuro = document.documentElement.getAttribute('data-tema')==='oscuro';
+    document.documentElement.setAttribute('data-tema', oscuro?'':'oscuro');
+    document.getElementById('btnTema').textContent = oscuro?'🌙':'☀️';
+    refrescar();
+  });
+
+  // Exportar
+  document.getElementById('btnExportar').addEventListener('click', exportarCSV);
+
+  // Cargar datos
+  await cargarTodos();
+  document.getElementById('ultimaAct').textContent = new Date().toLocaleString('es-SV');
+  document.getElementById('spinner').style.display='none';
+
+  // Render inicial
+  renderVentas();
+})();
+</script>
+</body>
+</html>
