@@ -12,7 +12,7 @@ window.DASHBOARD_CONFIG = {
 
   // ── Identidad ─────────────────────────────────────────────────
   nombreCliente: 'GAVI Derma',
-  logoUrl: 'images.png',
+  logoUrl: 'Logo-Gavi.png',
 
   // ── Colores (provisionales) ───────────────────────────────────
   colores: {
