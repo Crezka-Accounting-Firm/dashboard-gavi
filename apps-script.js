@@ -1,5 +1,5 @@
 /**
- * APPS SCRIPT PROXY MULTI-HOJA — Clínica Dermatológica
+ * APPS SCRIPT PROXY MULTI-HOJA — GAVI Derma
  * ═══════════════════════════════════════════════════════
  *
  * Este script expone las 3 pestañas (Ventas, Compras, Citas) desde

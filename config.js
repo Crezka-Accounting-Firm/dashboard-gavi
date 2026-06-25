@@ -1,5 +1,5 @@
 /**
- * CONFIGURACIÓN — Clínica Dermatológica (Dra. Villalta)
+ * CONFIGURACIÓN — GAVI Derma
  * ────────────────────────────────────────────────────────────────
  * Cuando tengas logo y colores reales, edita:
  *   logoUrl          → ruta del archivo logo (ej. "logo.png")
@@ -11,7 +11,7 @@
 window.DASHBOARD_CONFIG = {
 
   // ── Identidad ─────────────────────────────────────────────────
-  nombreCliente: 'Clínica Dra. Villalta',
+  nombreCliente: 'GAVI Derma',
   logoUrl: '',   // ← ej: "logo.png" cuando lo tengas
 
   // ── Colores (provisionales) ───────────────────────────────────
