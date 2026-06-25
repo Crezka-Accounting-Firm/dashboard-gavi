@@ -848,7 +848,6 @@ function renderCitas() {
     datasets:[{data:Object.values(porServ),backgroundColor:PALETA}]
   },{plugins:{legend:{position:'bottom',labels:{color:getComputedStyle(document.documentElement).getPropertyValue('--texto')}}}});
 
-  const porEst={};
   // No hay columna Estado en CITAS — mostrar top pacientes (nombre)
   const porPac={};
   datos.forEach(r=>{const p=(r.CLIENTE||'').split(' ').slice(0,2).join(' '); porPac[p]=(porPac[p]||0)+1;});
