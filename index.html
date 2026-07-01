@@ -58,13 +58,13 @@ header {
 .header-der { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* ── Controls ────────────────────────────────────────────── */
-select, button {
+select, button, input[type="date"] {
   font: inherit; padding: 8px 13px; border-radius: 8px;
   border: 1px solid var(--borde); background: var(--tarjeta);
   color: var(--texto); cursor: pointer; font-size: 13px;
   transition: border-color 0.15s;
 }
-select:hover, button:hover { border-color: var(--primario); }
+select:hover, button:hover, input[type="date"]:hover { border-color: var(--primario); }
 button.btn-prim { background: var(--primario); color: #fff; border-color: transparent; font-weight: 600; }
 button.btn-prim:hover { opacity: 0.9; }
 
@@ -131,8 +131,10 @@ button.btn-prim:hover { opacity: 0.9; }
   grid-template-columns: 2fr 1fr;
 }
 .charts-grid .span2 { grid-column: span 2; }
+.charts-grid.tres { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 840px) {
   .charts-grid { grid-template-columns: 1fr; }
+  .charts-grid.tres { grid-template-columns: 1fr; }
   .charts-grid .span2 { grid-column: span 1; }
 }
 .chart-card {
@@ -249,11 +251,15 @@ footer {
     <div class="header-der">
       <span class="badge-fuente" id="badgeFuente">● Cargando…</span>
       <select id="selectorPeriodo">
-        <option value="todo">Todo el período</option>
+        <option value="hoy">Hoy</option>
+        <option value="dia">Día específico…</option>
+        <option value="semana">Esta semana</option>
         <option value="mes" selected>Este mes</option>
         <option value="trimestre">Último trimestre</option>
         <option value="anio">Este año</option>
+        <option value="todo">Todo el período</option>
       </select>
+      <input type="date" id="fechaDia" style="display:none">
       <button id="btnTema">🌙</button>
       <button class="btn-prim" id="btnExportar">⬇ Exportar</button>
     </div>
@@ -275,16 +281,22 @@ footer {
 
     <div class="charts-grid">
       <div class="chart-card span2">
-        <h3>Ingresos mensuales</h3>
+        <h3 id="t-ventas-tendencia">Ingresos mensuales</h3>
         <div class="chart-wrap"><canvas id="g-ventas-tendencia"></canvas></div>
       </div>
+    </div>
+    <div class="charts-grid tres">
       <div class="chart-card">
         <h3>Por servicio</h3>
         <div class="chart-wrap"><canvas id="g-ventas-servicios"></canvas></div>
       </div>
       <div class="chart-card">
-        <h3>Estado de cobro</h3>
+        <h3>Forma de pago ($)</h3>
         <div class="chart-wrap"><canvas id="g-ventas-estado"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Transacciones por forma de pago</h3>
+        <div class="chart-wrap"><canvas id="g-ventas-pago"></canvas></div>
       </div>
     </div>
 
@@ -292,11 +304,13 @@ footer {
       <h3>Detalle de ventas</h3>
       <div class="filtros">
         <input type="text" id="bus-ventas" placeholder="🔍 Buscar paciente, servicio…">
-        <select id="flt-ventas-estado">
-          <option value="">Todos los estados</option>
-          <option value="Pagado">Pagado</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="Vencido">Vencido</option>
+        <select id="flt-ventas-pago">
+          <option value="">Todas las formas de pago</option>
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="CASH">Cash</option>
+          <option value="SERFINSA">POS Serfinsa</option>
+          <option value="AMERICAN">POS American</option>
+          <option value="TRANSF">Transferencia</option>
         </select>
       </div>
       <div id="tbl-ventas"></div>
@@ -313,7 +327,7 @@ footer {
 
     <div class="charts-grid">
       <div class="chart-card span2">
-        <h3>Gastos mensuales</h3>
+        <h3 id="t-compras-tendencia">Gastos mensuales</h3>
         <div class="chart-wrap"><canvas id="g-compras-tendencia"></canvas></div>
       </div>
       <div class="chart-card">
@@ -351,7 +365,7 @@ footer {
 
     <div class="charts-grid">
       <div class="chart-card span2">
-        <h3>Citas por mes</h3>
+        <h3 id="t-citas-mes">Citas por mes</h3>
         <div class="chart-wrap"><canvas id="g-citas-mes"></canvas></div>
       </div>
       <div class="chart-card">
@@ -413,15 +427,42 @@ function pilClass(e) {
   return 'pill pill-' + (m[(e||'').toLowerCase()] || 'neu');
 }
 
+function inicioSemana(h) {
+  // Semana iniciando lunes
+  const d = new Date(h.getFullYear(), h.getMonth(), h.getDate());
+  d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+  return d;
+}
+
 function cumplePeriodo(fechaStr, periodo) {
   if (periodo === 'todo') return true;
   const f = new Date(fechaStr);
   if (isNaN(f)) return true;
   const h = new Date();
+  if (periodo === 'hoy')      return f.getFullYear() === h.getFullYear() && f.getMonth() === h.getMonth() && f.getDate() === h.getDate();
+  if (periodo === 'dia') {
+    const v = document.getElementById('fechaDia')?.value;
+    if (!v) return true;
+    const [a, m, d] = v.split('-').map(Number);
+    return f.getFullYear() === a && f.getMonth() === m - 1 && f.getDate() === d;
+  }
+  if (periodo === 'semana')   { const ini = inicioSemana(h); const fin = new Date(ini); fin.setDate(ini.getDate() + 7); return f >= ini && f < fin; }
   if (periodo === 'mes')      return f.getFullYear() === h.getFullYear() && f.getMonth() === h.getMonth();
   if (periodo === 'trimestre'){ const l = new Date(h.getFullYear(), h.getMonth()-3, h.getDate()); return f >= l; }
   if (periodo === 'anio')     return f.getFullYear() === h.getFullYear();
   return true;
+}
+
+/* Normaliza el texto de la columna PAGO a etiquetas consistentes */
+function normPago(s) {
+  const t = (s || '').toString().toUpperCase().trim();
+  if (!t) return 'Sin registrar';
+  if (t.includes('SERFINSA')) return 'POS Serfinsa';
+  if (t.includes('AMERICAN')) return 'POS American';
+  if (t.includes('TRANSF'))   return 'Transferencia';
+  if (t.includes('EFECTIVO')) return 'Efectivo';
+  if (t.includes('CASH'))     return 'Cash';
+  return t.charAt(0) + t.slice(1).toLowerCase();
 }
 
 function colPeriodo(lista, periodoFn) {
@@ -430,14 +471,20 @@ function colPeriodo(lista, periodoFn) {
 }
 
 function porMes(lista, campoFecha, campoVal, esConteo = false) {
+  // Períodos cortos → agrupar por día; largos → por mes
+  const per = document.getElementById('selectorPeriodo').value;
+  const porDia = ['hoy','dia','semana','mes'].includes(per);
   const acc = {};
   lista.forEach(r => {
     const d = new Date(r[campoFecha]);
-    const k = isNaN(d) ? 'N/D' : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const k = isNaN(d) ? 'N/D' : porDia
+      ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     acc[k] = (acc[k]||0) + (esConteo ? 1 : (Number(r[campoVal])||0));
   });
   const keys = Object.keys(acc).sort();
-  return { labels: keys, data: keys.map(k => acc[k]) };
+  const labels = keys.map(k => (porDia && k !== 'N/D') ? k.slice(8,10) + '/' + k.slice(5,7) : k);
+  return { labels, data: keys.map(k => acc[k]), porDia };
 }
 
 function crearGrafica(id, tipo, data, opts = {}) {
@@ -472,6 +519,7 @@ function generarFallbackVentas() {
       Servicio: servicios[i%servicios.length],
       Monto: (Math.floor(Math.random()*180)+20).toFixed(2),
       Estado: estados[Math.floor(Math.random()*estados.length)],
+      PAGO: ['EFECTIVO','POS SERFINSA','TRANSFERENCIA','POS AMERICAN','EFECTIVO, TRANSFERENCIA'][i%5],
       FACTURA: i%3===0?'si':'no'
     });
   }
@@ -580,12 +628,13 @@ async function cargarTodos() {
    VENTAS
    ══════════════════════════════════════════════════════════════ */
 function filtrarVentas() {
-  const txt = (document.getElementById('bus-ventas').value||'').toLowerCase();
-  const est = document.getElementById('flt-ventas-estado').value;
-  const per = document.getElementById('selectorPeriodo').value;
+  const txt  = (document.getElementById('bus-ventas').value||'').toLowerCase();
+  const pago = document.getElementById('flt-ventas-pago').value;
+  const per  = document.getElementById('selectorPeriodo').value;
   return DATA.ventas.filter(r =>
     cumplePeriodo(r.FECHA||r.Fecha, per) &&
-    (!txt || [r.NOMBRE,r.PROCEDIMIENTO,r.FACTURA].some(v => (v||'').toString().toLowerCase().includes(txt)))
+    (!pago || (r.PAGO||'').toString().toUpperCase().includes(pago)) &&
+    (!txt || [r.NOMBRE,r.PROCEDIMIENTO,r.PAGO,r.FACTURA].some(v => (v||'').toString().toLowerCase().includes(txt)))
   );
 }
 
@@ -599,18 +648,21 @@ function renderVentas() {
   const fHora = cols.hora          || 'HORA';
   const fFact = cols.factura       || 'FACTURA';
   const fPos  = cols.posDad        || 'POS (DAD)';
+  const fAmer = cols.posAmerican   || 'POST AMERICAN';
   const fEfec = cols.efectivo      || 'EFECTIVO';
   const fCash = cols.cash          || 'CASH';
   const fTran = cols.transferencia || 'TRANF';
+  const fPago = cols.pago          || 'PAGO';
 
   // KPIs — cobrado = suma real de métodos de pago
   const sumaCol    = (d, col) => d.reduce((s,r) => s + (Number(r[col])||0), 0);
   const total      = sumaCol(datos, fMon);
   const cobPos     = sumaCol(datos, fPos);
+  const cobAmer    = sumaCol(datos, fAmer);
   const cobEfec    = sumaCol(datos, fEfec);
   const cobCash    = sumaCol(datos, fCash);
   const cobTran    = sumaCol(datos, fTran);
-  const totalCob   = cobPos + cobEfec + cobCash + cobTran;
+  const totalCob   = cobPos + cobAmer + cobEfec + cobCash + cobTran;
   const pendiente  = Math.max(0, total - totalCob);
   const conMonto   = datos.filter(r => Number(r[fMon]) > 0);
   const ticket     = conMonto.length ? total / conMonto.length : 0;
@@ -627,7 +679,7 @@ function renderVentas() {
       <div class="kpi-icono">✅</div>
       <div class="kpi-lbl">Total cobrado</div>
       <div class="kpi-val">${fmt$(totalCob)}</div>
-      <div class="kpi-sub">POS: ${fmt$(cobPos)} · Efec: ${fmt$(cobEfec+cobCash)} · Transf: ${fmt$(cobTran)}</div>
+      <div class="kpi-sub">POS: ${fmt$(cobPos+cobAmer)} · Efec: ${fmt$(cobEfec+cobCash)} · Transf: ${fmt$(cobTran)}</div>
     </div>
     <div class="kpi-card ${pendiente>0?'warn':'ok'}">
       <div class="kpi-icono">⏳</div>
@@ -648,11 +700,14 @@ function renderVentas() {
       <div class="kpi-sub">de ${datos.length} registros totales</div>
     </div>`;
 
-  // Gráfica tendencia
+  // Gráfica tendencia (por día en períodos cortos, por mes en largos)
   const tm = porMes(datos, fFec, fMon);
-  crearGrafica('g-ventas-tendencia', 'line', {
+  document.getElementById('t-ventas-tendencia').textContent = tm.porDia ? 'Ingresos por día' : 'Ingresos mensuales';
+  crearGrafica('g-ventas-tendencia', tm.porDia ? 'bar' : 'line', {
     labels: tm.labels,
-    datasets: [{ label: 'Ingresos ($)', data: tm.data, borderColor: '#7C3D8F', backgroundColor: 'rgba(124,61,143,0.08)', tension: 0.3, fill: true, pointRadius: 4 }]
+    datasets: [ tm.porDia
+      ? { label: 'Ingresos ($)', data: tm.data, backgroundColor: 'rgba(124,61,143,0.7)', borderRadius: 6 }
+      : { label: 'Ingresos ($)', data: tm.data, borderColor: '#7C3D8F', backgroundColor: 'rgba(124,61,143,0.08)', tension: 0.3, fill: true, pointRadius: 4 } ]
   });
 
   // Gráfica por tipo de servicio (dona)
@@ -663,13 +718,26 @@ function renderVentas() {
     datasets: [{ data: Object.values(porServ), backgroundColor: PALETA }]
   }, { plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--texto') } } } });
 
-  // Gráfica métodos de pago
-  const metodos = { 'POS (DAD)': cobPos, 'Efectivo': cobEfec, 'Cash': cobCash, 'Transferencia': cobTran };
+  // Desglose de forma de pago en $ (columnas monetarias)
+  const metodos = { 'POS Serfinsa': cobPos, 'POS American': cobAmer, 'Efectivo': cobEfec, 'Cash': cobCash, 'Transferencia': cobTran };
   const metFilt  = Object.entries(metodos).filter(([,v]) => v > 0);
   crearGrafica('g-ventas-estado', 'doughnut', {
     labels: metFilt.map(x=>x[0]),
-    datasets: [{ data: metFilt.map(x=>x[1]), backgroundColor: ['#7C3D8F','#16a34a','#0d9488','#f59e0b'] }]
+    datasets: [{ data: metFilt.map(x=>x[1]), backgroundColor: ['#7C3D8F','#6366f1','#16a34a','#0d9488','#f59e0b'] }]
   }, { plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--texto') } } } });
+
+  // Transacciones por forma de pago (columna PAGO, soporta pagos combinados "EFECTIVO, TRANSFERENCIA")
+  const porPago = {};
+  datos.filter(r => Number(r[fMon]) > 0).forEach(r => {
+    const partes = (r[fPago]||'').toString().split(',');
+    const etiquetas = [...new Set(partes.map(p => normPago(p)))];
+    etiquetas.forEach(e => { porPago[e] = (porPago[e]||0) + 1; });
+  });
+  const pagoOrd = Object.entries(porPago).sort((a,b)=>b[1]-a[1]);
+  crearGrafica('g-ventas-pago', 'bar', {
+    labels: pagoOrd.map(x=>x[0]),
+    datasets: [{ label: 'Transacciones', data: pagoOrd.map(x=>x[1]), backgroundColor: PALETA, borderRadius: 6 }]
+  }, { indexAxis: 'y', plugins: { legend: { display: false } } });
 
   renderTablaVentas(datos);
 }
@@ -681,16 +749,18 @@ function renderTablaVentas(datos) {
   const cols = CFG.columnasVentas || {};
   const cont = document.getElementById('tbl-ventas');
   if (!datos.length) { cont.innerHTML = '<div class="vacío"><div class="vacío-ico">📄</div>No se encontraron registros.</div>'; renderPaginacion('ventas',0,datos.length); return; }
-  let h = '<table><thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Procedimiento</th><th class="num">Monto</th><th>Factura</th></tr></thead><tbody>';
+  let h = '<table><thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Procedimiento</th><th class="num">Monto</th><th>Pago</th><th>Factura</th></tr></thead><tbody>';
   pag.forEach(r => {
     const factura = (r[cols.factura||'FACTURA']||'').toLowerCase();
     const factClass = factura==='si' ? 'pill-ok' : factura==='no' ? 'pill-neu' : 'pill-warn';
+    const pagoTxt = (r[cols.pago||'PAGO']||'').toString().trim();
     h += `<tr>
       <td data-lbl="Fecha">${fmtF(r[cols.fecha||'FECHA'])}</td>
       <td data-lbl="Hora">${r[cols.hora||'HORA']||''}</td>
       <td data-lbl="Paciente">${r[cols.cliente||'NOMBRE']||''}</td>
       <td data-lbl="Procedimiento">${r[cols.servicio||'PROCEDIMIENTO']||''}</td>
       <td data-lbl="Monto" class="num monto">${fmt$(r[cols.monto||'MONTO'])}</td>
+      <td data-lbl="Pago">${pagoTxt ? pagoTxt.split(',').map(p=>`<span class="pill pill-neu">${normPago(p)}</span>`).join(' ') : '—'}</td>
       <td data-lbl="Factura"><span class="pill ${factClass}">${r[cols.factura||'FACTURA']||'—'}</span></td>
     </tr>`;
   });
@@ -747,6 +817,7 @@ function renderCompras() {
     </div>`;
 
   const tm = porMes(datos,'FECHA','MONTO');
+  document.getElementById('t-compras-tendencia').textContent = tm.porDia ? 'Gastos por día' : 'Gastos mensuales';
   crearGrafica('g-compras-tendencia','line',{
     labels: tm.labels,
     datasets:[{label:'Gastos ($)',data:tm.data,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.08)',tension:0.3,fill:true,pointRadius:4}]
@@ -842,6 +913,7 @@ function renderCitas() {
     </div>`;
 
   const tm=porMes(datos,'FECHA','',true);
+  document.getElementById('t-citas-mes').textContent = tm.porDia ? 'Citas por día' : 'Citas por mes';
   crearGrafica('g-citas-mes','bar',{
     labels:tm.labels,
     datasets:[{label:'Citas',data:tm.data,backgroundColor:'rgba(124,61,143,0.7)',borderRadius:6}]
@@ -965,10 +1037,17 @@ function exportarCSV() {
   });
 
   // Filtros
-  ['bus-ventas','flt-ventas-estado'].forEach(id => document.getElementById(id)?.addEventListener('input',()=>{PAGINA.ventas=1;renderVentas();}));
+  ['bus-ventas','flt-ventas-pago'].forEach(id => document.getElementById(id)?.addEventListener('input',()=>{PAGINA.ventas=1;renderVentas();}));
   ['bus-compras','flt-compras-estado'].forEach(id => document.getElementById(id)?.addEventListener('input',()=>{PAGINA.compras=1;renderCompras();}));
   ['bus-citas','flt-citas-estado'].forEach(id => document.getElementById(id)?.addEventListener('input',()=>{PAGINA.citas=1;renderCitas();}));
-  document.getElementById('selectorPeriodo').addEventListener('change', refrescar);
+  document.getElementById('selectorPeriodo').addEventListener('change', () => {
+    const esDia = document.getElementById('selectorPeriodo').value === 'dia';
+    const inp = document.getElementById('fechaDia');
+    inp.style.display = esDia ? '' : 'none';
+    if (esDia && !inp.value) inp.value = new Date().toISOString().slice(0,10);
+    refrescar();
+  });
+  document.getElementById('fechaDia').addEventListener('change', refrescar);
 
   // Tema
   document.getElementById('btnTema').addEventListener('click', () => {
