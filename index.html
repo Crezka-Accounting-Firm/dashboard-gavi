@@ -515,24 +515,29 @@ function generarFallbackCitas() {
 
 /* ── Carga de datos ─────────────────────────────────────────── */
 /* ── Fetch de una hoja via ?hoja= (patrón multi-hoja Todo Marketing) ── */
-async function fetchHoja(baseUrl, claveHoja, fallback) {
+async function fetchHoja(baseUrl, claveHoja, fallback, intentos = 3) {
   const url = baseUrl + '?hoja=' + claveHoja;
-  try {
-    const r = await fetch(url, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const json = await r.json();
-    // El proxy devuelve array de filas o {error:...}
-    if (!Array.isArray(json)) {
-      console.warn('Proxy devolvió error para hoja "' + claveHoja + '":', json);
-      throw new Error(json.error || 'Respuesta inesperada');
+  for (let intento = 1; intento <= intentos; intento++) {
+    try {
+      const controlador = new AbortController();
+      const timeoutId = setTimeout(() => controlador.abort(), 15000); // 15s por intento
+      const r = await fetch(url, { cache: 'no-store', signal: controlador.signal });
+      clearTimeout(timeoutId);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const json = await r.json();
+      if (!Array.isArray(json)) {
+        throw new Error(json.error || 'Respuesta inesperada');
+      }
+      return { data: json, esFallback: false };
+    } catch(e) {
+      console.warn(`Intento ${intento}/${intentos} fallido para hoja "${claveHoja}":`, e.message);
+      if (intento === intentos) {
+        return { data: fallback(), esFallback: true };
+      }
+      await new Promise(res => setTimeout(res, 1000 * intento)); // espera antes de reintentar
     }
-    return { data: json, esFallback: false };
-  } catch(e) {
-    console.warn('Usando fallback para hoja "' + claveHoja + '":', e.message);
-    return { data: fallback(), esFallback: true };
   }
 }
-
 async function cargarTodos() {
   const base = CFG.sheetsEndpointBase || '';
   const sinConectar = !base || base.startsWith('PENDIENTE');
